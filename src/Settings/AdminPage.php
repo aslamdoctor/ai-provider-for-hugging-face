@@ -210,20 +210,19 @@ class AdminPage {
 		$models = array_filter( array_map( 'trim', explode( "\n", (string) $value ) ) );
 		?>
 		<div class="hf-custom-models" data-hidden-id="<?php echo esc_attr( $hidden_id ); ?>" data-select-id="<?php echo esc_attr( $select_id ); ?>">
-			<div class="hf-custom-models__input-row" style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
+			<div class="hf-custom-models__input-row">
 				<input type="text"
-					class="hf-custom-models__input regular-text"
-					placeholder="<?php echo esc_attr( $placeholder ); ?>"
-					style="flex:1;" />
+					class="hf-custom-models__input"
+					placeholder="<?php echo esc_attr( $placeholder ); ?>" />
 				<button type="button" class="button hf-custom-models__add">
 					<?php esc_html_e( 'Add', 'ai-provider-for-hugging-face' ); ?>
 				</button>
 			</div>
-			<div class="hf-custom-models__tags" style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px;">
+			<div class="hf-custom-models__tags">
 				<?php foreach ( $models as $model_id ) : ?>
-					<span class="hf-custom-models__tag" style="display:inline-flex;align-items:center;gap:4px;background:#f0f0f1;border:1px solid #c3c4c7;border-radius:3px;padding:2px 8px;font-size:13px;">
+					<span class="hf-custom-models__tag">
 						<?php echo esc_html( $model_id ); ?>
-						<button type="button" class="hf-custom-models__remove" data-model="<?php echo esc_attr( $model_id ); ?>" style="background:none;border:none;cursor:pointer;color:#a00;font-size:16px;line-height:1;padding:0 2px;">&times;</button>
+						<button type="button" class="hf-custom-models__remove" data-model="<?php echo esc_attr( $model_id ); ?>">&times;</button>
 					</span>
 				<?php endforeach; ?>
 			</div>
@@ -297,6 +296,8 @@ class AdminPage {
 			return;
 		}
 
+		self::render_inline_styles();
+
 		echo '<div class="wrap">';
 		echo '<h1>' . esc_html( get_admin_page_title() ) . '</h1>';
 
@@ -310,6 +311,58 @@ class AdminPage {
 		echo '</div>';
 
 		self::render_inline_script();
+	}
+
+	/**
+	 * Render the inline JavaScript for custom model add/remove and dropdown sync.
+	 */
+	/**
+	 * Render the inline CSS for custom model UI components.
+	 */
+	private static function render_inline_styles(): void {
+		?>
+		<style>
+			.hf-custom-models__input-row {
+				display: flex;
+				gap: 8px;
+				align-items: center;
+				margin-bottom: 8px;
+				width: 100%;
+				max-width: 25rem;
+			}
+			.hf-custom-models__input {
+				flex: 1;
+			}
+			.hf-custom-models__tags {
+				display: flex;
+				flex-wrap: wrap;
+				gap: 6px;
+				margin-bottom: 8px;
+			}
+			.hf-custom-models__tag {
+				display: inline-flex;
+				align-items: center;
+				gap: 4px;
+				background: #f0f0f1;
+				border: 1px solid #c3c4c7;
+				border-radius: 3px;
+				padding: 2px 8px;
+				font-size: 13px;
+			}
+			.hf-custom-models__remove {
+				background: none;
+				border: none;
+				cursor: pointer;
+				color: #a00;
+				font-size: 16px;
+				line-height: 1;
+				padding: 0 2px;
+			}
+			.hf-custom-models__remove:hover {
+				color: #dc3232;
+			}
+		</style>
+		<?php
 	}
 
 	/**
@@ -372,14 +425,12 @@ class AdminPage {
 					models.forEach(function(modelId) {
 						var tag = document.createElement('span');
 						tag.className = 'hf-custom-models__tag';
-						tag.style.cssText = 'display:inline-flex;align-items:center;gap:4px;background:#f0f0f1;border:1px solid #c3c4c7;border-radius:3px;padding:2px 8px;font-size:13px;';
 						tag.textContent = modelId;
 
 						var btn = document.createElement('button');
 						btn.type = 'button';
 						btn.className = 'hf-custom-models__remove';
 						btn.dataset.model = modelId;
-						btn.style.cssText = 'background:none;border:none;cursor:pointer;color:#a00;font-size:16px;line-height:1;padding:0 2px;';
 						btn.innerHTML = '&times;';
 						tag.appendChild(btn);
 						tagsWrap.appendChild(tag);

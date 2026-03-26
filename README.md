@@ -1,6 +1,6 @@
 # AI Provider for Hugging Face
 
-AI Provider for Hugging Face for the WordPress AI Client. Use open-source models like Mistral, Llama, Qwen, and thousands more for text and image generation through the standard WordPress AI API.
+AI Provider for Hugging Face for the WordPress AI Client. Use open-source models for text and image generation through the standard WordPress AI API.
 
 ## Features
 
@@ -8,11 +8,12 @@ AI Provider for Hugging Face for the WordPress AI Client. Use open-source models
 - API key management via environment variable, PHP constant, or the admin UI
 - Text generation through `wp_ai_client_prompt()`
 - Image generation through `wp_ai_client_prompt()->generate_image()`
-- Curated default text models (Mistral 7B, Llama 3.1 8B, Qwen 2.5 7B, Phi-3 Mini, Zephyr 7B)
-- Curated default image models (FLUX.1 Schnell, FLUX.1 Dev, SDXL Lightning, Stable Diffusion XL)
-- Add custom models from the **Settings > Hugging Face** admin page
-- Extensible model list via the `hugging_face_ai_provider_models` and `hugging_face_ai_provider_image_models` filters
+- **Dynamic model lists** — fetches top 20 popular models from HuggingFace, refreshed every 12 hours
+- **Multi-provider routing** — automatically selects the best inference provider (hf-inference, fal-ai, replicate, together, nscale, wavespeed), preferring the free tier
+- Add custom models from the **Settings > Hugging Face** admin page with instant dropdown sync
+- Extensible via `hugging_face_ai_provider_models` and `hugging_face_ai_provider_image_models` filters
 - Configurable base URL for self-hosted TGI instances
+- Clear, actionable error messages for all common API error codes
 
 ## Requirements
 
@@ -47,9 +48,14 @@ Set your API key using any of these methods (checked in order):
    ```
 3. **Admin UI:** Go to **Settings > Connectors** and enter your key.
 
-### Default Model
+### Model Settings
 
-Go to **Settings > Hugging Face** to select a default model or add custom models.
+Go to **Settings > Hugging Face** to:
+- Select a default text generation model
+- Select a default image generation model
+- Add custom models (type a model ID and click Add)
+
+The dropdowns show the top 20 most popular models, refreshed automatically. Custom models you add appear instantly in the dropdown.
 
 ## Usage
 
@@ -86,9 +92,13 @@ if ( ! is_wp_error( $image ) ) {
 }
 ```
 
+## Pricing
+
+Models on the free **hf-inference** provider work without credits. Other providers (fal-ai, replicate, together, etc.) require [pre-paid HuggingFace credits](https://huggingface.co/settings/billing). The plugin automatically selects the best available provider, preferring the free tier.
+
 ## Extensibility
 
-### Add custom models via filter
+### Add custom text models via filter
 
 ```php
 add_filter( 'hugging_face_ai_provider_models', function ( array $models ): array {
@@ -123,9 +133,9 @@ add_filter( 'hugging_face_ai_provider_base_url', function (): string {
 ### Custom image generation endpoint
 
 ```php
-add_filter( 'hugging_face_ai_provider_image_url', function (): string {
-    return 'http://localhost:8080/v1';
-} );
+add_filter( 'hugging_face_ai_provider_image_url', function ( string $url, string $model_id ): string {
+    return 'http://localhost:8080/models/' . $model_id;
+}, 10, 2 );
 ```
 
 ## Contributing

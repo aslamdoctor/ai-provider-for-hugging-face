@@ -17,6 +17,7 @@ use WordPress\AiClient\Providers\ApiBasedImplementation\AbstractApiBasedModel;
 use WordPress\AiClient\Providers\Http\DTO\Request;
 use WordPress\AiClient\Providers\Http\Enums\HttpMethodEnum;
 use WordPress\AiClient\Providers\Http\Exception\ClientException;
+use WordPress\AiClient\Providers\Http\Exception\ServerException;
 use WordPress\AiClient\Providers\Http\Util\ResponseUtil;
 use WordPress\AiClient\Providers\Models\ImageGeneration\Contracts\ImageGenerationModelInterface;
 use WordPress\AiClient\Results\DTO\Candidate;
@@ -208,41 +209,117 @@ class HuggingFaceImageGenerationModel extends AbstractApiBasedModel implements I
 
 		$status_code = $response->getStatusCode();
 		$model_id    = $this->metadata()->getId();
+		$api_message = $this->extractErrorMessage( $response );
 
-		if ( 402 === $status_code ) {
-			throw new ClientException(
-				sprintf(
-					'Model "%s" requires pre-paid HuggingFace credits. '
-					. 'Add credits at https://huggingface.co/settings/billing '
-					. 'or choose a model available on the free "hf-inference" provider.',
-					$model_id
-				),
-				$status_code
-			);
+		switch ( $status_code ) {
+			case 400:
+				throw new ClientException(
+					sprintf(
+						'Bad request for model "%s". The model could not process the request. %s',
+						$model_id,
+						$api_message
+					),
+					$status_code
+				);
+
+			case 401:
+				throw new ClientException(
+					sprintf(
+						'Authentication failed for model "%s". Please check your HuggingFace API key in Settings > Connectors.',
+						$model_id
+					),
+					$status_code
+				);
+
+			case 402:
+				throw new ClientException(
+					sprintf(
+						'Model "%s" requires pre-paid HuggingFace credits. '
+						. 'Add credits at https://huggingface.co/settings/billing '
+						. 'or choose a model available on the free "hf-inference" provider.',
+						$model_id
+					),
+					$status_code
+				);
+
+			case 404:
+				throw new ClientException(
+					sprintf(
+						'Model "%s" is not available on any HuggingFace inference provider. '
+						. 'Browse available models at https://huggingface.co/models?inference=warm&pipeline_tag=text-to-image',
+						$model_id
+					),
+					$status_code
+				);
+
+			case 410:
+				throw new ClientException(
+					sprintf(
+						'Model "%s" has been deprecated and is no longer available on the HuggingFace Inference API.',
+						$model_id
+					),
+					$status_code
+				);
+
+			case 422:
+				throw new ClientException(
+					sprintf(
+						'Model "%s" could not process the request parameters. %s',
+						$model_id,
+						$api_message
+					),
+					$status_code
+				);
+
+			case 429:
+				throw new ClientException(
+					sprintf(
+						'Rate limit exceeded for model "%s". Please wait a moment before trying again. '
+						. 'Consider upgrading your HuggingFace plan for higher rate limits.',
+						$model_id
+					),
+					$status_code
+				);
+
+			case 500:
+				throw new ServerException(
+					sprintf(
+						'HuggingFace server error while generating image with model "%s". Please try again later. %s',
+						$model_id,
+						$api_message
+					),
+					$status_code
+				);
+
+			case 503:
+				throw new ServerException(
+					sprintf(
+						'Model "%s" is currently loading or temporarily unavailable. Please try again in a few moments.',
+						$model_id
+					),
+					$status_code
+				);
 		}
 
-		if ( 404 === $status_code ) {
-			throw new ClientException(
-				sprintf(
-					'Model "%s" is not available on any HuggingFace inference provider. '
-					. 'Browse available models at https://huggingface.co/models?inference=warm&pipeline_tag=text-to-image',
-					$model_id
-				),
-				$status_code
-			);
-		}
-
-		if ( 410 === $status_code ) {
-			throw new ClientException(
-				sprintf(
-					'Model "%s" has been deprecated and is no longer available on the HuggingFace Inference API.',
-					$model_id
-				),
-				$status_code
-			);
-		}
-
+		// Fallback for any other status codes.
 		ResponseUtil::throwIfNotSuccessful( $response );
+	}
+
+	/**
+	 * Extract a human-readable error message from the API response body.
+	 *
+	 * @param \WordPress\AiClient\Providers\Http\DTO\Response $response The HTTP response.
+	 * @return string The error message, or empty string if none found.
+	 */
+	private function extractErrorMessage( $response ): string {
+		$body = (string) $response->getBody();
+		$data = json_decode( $body, true );
+
+		if ( is_array( $data ) && ! empty( $data['error'] ) ) {
+			return is_string( $data['error'] ) ? $data['error'] : '';
+		}
+
+		return '';
 	}
 
 	/**

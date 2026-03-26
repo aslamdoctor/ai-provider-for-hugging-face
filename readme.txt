@@ -1,6 +1,6 @@
 === AI Provider for Hugging Face ===
 Contributors: aslamdoctor
-Tags: ai, hugging-face, ai-client, connectors, text-generation
+Tags: ai, hugging-face, ai-client, connectors, text-generation, image-generation
 Requires at least: 7.0
 Tested up to: 7.0
 Requires PHP: 7.4
@@ -8,7 +8,7 @@ Stable tag: 1.0.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-AI Provider for Hugging Face for the WordPress AI Client. Use open-source models like Mistral, Llama, and Qwen for text and image generation through the standard WordPress AI API.
+AI Provider for Hugging Face for the WordPress AI Client. Use open-source models for text and image generation through the standard WordPress AI API.
 
 == Description ==
 
@@ -18,12 +18,14 @@ This plugin registers Hugging Face as an AI provider for the WordPress AI Client
 
 * Registers Hugging Face on the Settings > Connectors admin screen
 * Supports API key management (environment variable, PHP constant, or database)
-* Provides text generation via `wp_ai_client_prompt()`
-* Image generation via text-to-image models
-* Includes curated default text models: Mistral 7B, Llama 3.1 8B, Qwen 2.5 7B, Phi-3 Mini, Zephyr 7B
-* Includes curated default image models: FLUX.1 Schnell, FLUX.1 Dev, SDXL Lightning, Stable Diffusion XL
-* Extensible model list via the `hugging_face_ai_provider_models` and `hugging_face_ai_provider_image_models` filters
+* Text generation via `wp_ai_client_prompt()`
+* Image generation via `wp_ai_client_prompt()->generate_image()`
+* Dynamically fetches top 20 popular models from HuggingFace (updated every 12 hours)
+* Multi-provider support — automatically routes to the best available inference provider (hf-inference, fal-ai, replicate, together, nscale, wavespeed)
+* Add custom models from the Settings > Hugging Face admin page
+* Extensible model lists via `hugging_face_ai_provider_models` and `hugging_face_ai_provider_image_models` filters
 * Configurable base URL for self-hosted TGI instances
+* Clear, actionable error messages for common API issues
 
 **Usage:**
 
@@ -54,26 +56,15 @@ You can also set the API key via environment variable or PHP constant:
 
 = Which models are supported? =
 
-The plugin ships with these default models:
+The plugin dynamically fetches the top 20 most popular text and image generation models from HuggingFace, updated every 12 hours. You can also add any model via the Custom Models field in Settings > Hugging Face, or using the `hugging_face_ai_provider_models` and `hugging_face_ai_provider_image_models` filters.
 
-* Mistral 7B Instruct v0.3
-* Llama 3.1 8B Instruct
-* Qwen 2.5 7B Instruct
-* Phi-3 Mini 4K Instruct
-* Zephyr 7B Beta
+= Do I need to pay for HuggingFace? =
 
-For image generation:
-
-* FLUX.1 Schnell
-* FLUX.1 Dev
-* SDXL Lightning
-* Stable Diffusion XL
-
-You can add any HuggingFace-hosted chat model using the `hugging_face_ai_provider_models` filter, or image model using the `hugging_face_ai_provider_image_models` filter.
+Models on the free "hf-inference" provider work without credits. Other providers (fal-ai, replicate, etc.) require pre-paid HuggingFace credits. The plugin automatically selects the best available provider, preferring the free tier.
 
 = Can I use a self-hosted model? =
 
-Yes. Use the `hugging_face_ai_provider_base_url` filter to point to your own Text Generation Inference (TGI) instance.
+Yes. Use the `hugging_face_ai_provider_base_url` filter for text generation or `hugging_face_ai_provider_image_url` filter for image generation to point to your own inference instance.
 
 = What capabilities are supported? =
 
@@ -81,13 +72,11 @@ Text generation and image generation. Video generation support may be added in f
 
 == Changelog ==
 
-= 1.1.0 =
-* Image generation via text-to-image models.
-* Default image models: FLUX.1 Schnell, FLUX.1 Dev, SDXL Lightning, Stable Diffusion XL.
-* Extensible image model list via `hugging_face_ai_provider_image_models` filter.
-
 = 1.0.0 =
 * Initial release.
 * Connector registration with API key management.
 * Text generation via Hugging Face Inference API.
-* Curated model list with extensibility filter.
+* Image generation via text-to-image models with multi-provider support.
+* Dynamic model lists fetched from HuggingFace API.
+* Admin page with custom model management (add/remove with instant dropdown sync).
+* Clear error messages for 400, 401, 402, 404, 410, 422, 429, 500, 503 API responses.
