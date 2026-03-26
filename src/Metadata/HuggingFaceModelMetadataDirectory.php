@@ -213,7 +213,7 @@ class HuggingFaceModelMetadataDirectory implements ModelMetadataDirectoryInterfa
 		}
 
 		throw new InvalidArgumentException(
-			sprintf( 'Model metadata not found for model ID: %s', $model_id )
+			sprintf( 'Model metadata not found for model ID: %s', esc_html( $model_id ) )
 		);
 	}
 

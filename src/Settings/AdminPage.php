@@ -229,10 +229,13 @@ class AdminPage {
 			<input type="hidden" name="<?php echo esc_attr( $hidden_name ); ?>" id="<?php echo esc_attr( $hidden_id ); ?>" value="<?php echo esc_attr( $value ); ?>" />
 			<p class="description">
 				<?php
-				printf(
-					/* translators: %s: URL to browse models on HuggingFace */
-					__( 'Enter a HuggingFace model ID (e.g., org/model-name) and click Add. <a href="%s" target="_blank">Browse models on HuggingFace</a>', 'ai-provider-for-hugging-face' ),
-					esc_url( $browse_url )
+				echo wp_kses(
+					sprintf(
+						/* translators: %s: URL to browse models on HuggingFace */
+						__( 'Enter a HuggingFace model ID (e.g., org/model-name) and click Add. <a href="%s" target="_blank">Browse models on HuggingFace</a>', 'ai-provider-for-hugging-face' ),
+						esc_url( $browse_url )
+					),
+					array( 'a' => array( 'href' => array(), 'target' => array() ) )
 				);
 				?>
 			</p>

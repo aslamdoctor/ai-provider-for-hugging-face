@@ -216,19 +216,19 @@ class HuggingFaceImageGenerationModel extends AbstractApiBasedModel implements I
 				throw new ClientException(
 					sprintf(
 						'Bad request for model "%s". The model could not process the request. %s',
-						$model_id,
-						$api_message
+						esc_html( $model_id ),
+						esc_html( $api_message )
 					),
-					$status_code
+					(int) $status_code
 				);
 
 			case 401:
 				throw new ClientException(
 					sprintf(
 						'Authentication failed for model "%s". Please check your HuggingFace API key in Settings > Connectors.',
-						$model_id
+						esc_html( $model_id )
 					),
-					$status_code
+					(int) $status_code
 				);
 
 			case 402:
@@ -237,9 +237,9 @@ class HuggingFaceImageGenerationModel extends AbstractApiBasedModel implements I
 						'Model "%s" requires pre-paid HuggingFace credits. '
 						. 'Add credits at https://huggingface.co/settings/billing '
 						. 'or choose a model available on the free "hf-inference" provider.',
-						$model_id
+						esc_html( $model_id )
 					),
-					$status_code
+					(int) $status_code
 				);
 
 			case 404:
@@ -247,28 +247,28 @@ class HuggingFaceImageGenerationModel extends AbstractApiBasedModel implements I
 					sprintf(
 						'Model "%s" is not available on any HuggingFace inference provider. '
 						. 'Browse available models at https://huggingface.co/models?inference=warm&pipeline_tag=text-to-image',
-						$model_id
+						esc_html( $model_id )
 					),
-					$status_code
+					(int) $status_code
 				);
 
 			case 410:
 				throw new ClientException(
 					sprintf(
 						'Model "%s" has been deprecated and is no longer available on the HuggingFace Inference API.',
-						$model_id
+						esc_html( $model_id )
 					),
-					$status_code
+					(int) $status_code
 				);
 
 			case 422:
 				throw new ClientException(
 					sprintf(
 						'Model "%s" could not process the request parameters. %s',
-						$model_id,
-						$api_message
+						esc_html( $model_id ),
+						esc_html( $api_message )
 					),
-					$status_code
+					(int) $status_code
 				);
 
 			case 429:
@@ -276,28 +276,28 @@ class HuggingFaceImageGenerationModel extends AbstractApiBasedModel implements I
 					sprintf(
 						'Rate limit exceeded for model "%s". Please wait a moment before trying again. '
 						. 'Consider upgrading your HuggingFace plan for higher rate limits.',
-						$model_id
+						esc_html( $model_id )
 					),
-					$status_code
+					(int) $status_code
 				);
 
 			case 500:
 				throw new ServerException(
 					sprintf(
 						'HuggingFace server error while generating image with model "%s". Please try again later. %s',
-						$model_id,
-						$api_message
+						esc_html( $model_id ),
+						esc_html( $api_message )
 					),
-					$status_code
+					(int) $status_code
 				);
 
 			case 503:
 				throw new ServerException(
 					sprintf(
 						'Model "%s" is currently loading or temporarily unavailable. Please try again in a few moments.',
-						$model_id
+						esc_html( $model_id )
 					),
-					$status_code
+					(int) $status_code
 				);
 		}
 

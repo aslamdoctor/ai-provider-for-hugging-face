@@ -1,6 +1,6 @@
 === AI Provider for Hugging Face ===
 Contributors: aslamdoctor
-Tags: ai, hugging-face, ai-client, connectors, text-generation, image-generation
+Tags: ai, hugging-face, ai-client, connectors, image-generation
 Requires at least: 7.0
 Tested up to: 7.0
 Requires PHP: 7.4
