@@ -20,10 +20,12 @@ if ( ! defined( 'ABSPATH' ) ) {
  */
 class AdminPage {
 
-	const OPTION_DEFAULT_MODEL  = 'hugging_face_default_model';
-	const OPTION_CUSTOM_MODELS  = 'hugging_face_custom_models';
-	const OPTION_GROUP          = 'hugging_face_settings';
-	const PAGE_SLUG             = 'hugging-face-settings';
+	const OPTION_DEFAULT_MODEL        = 'hugging_face_default_model';
+	const OPTION_CUSTOM_MODELS        = 'hugging_face_custom_models';
+	const OPTION_DEFAULT_IMAGE_MODEL  = 'hugging_face_default_image_model';
+	const OPTION_CUSTOM_IMAGE_MODELS  = 'hugging_face_custom_image_models';
+	const OPTION_GROUP                = 'hugging_face_settings';
+	const PAGE_SLUG                   = 'hugging-face-settings';
 
 	/**
 	 * Register hooks for the admin page.
@@ -91,6 +93,49 @@ class AdminPage {
 			array( __CLASS__, 'render_model_field' ),
 			self::PAGE_SLUG,
 			'hugging_face_model_section'
+		);
+
+		register_setting(
+			self::OPTION_GROUP,
+			self::OPTION_DEFAULT_IMAGE_MODEL,
+			array(
+				'type'              => 'string',
+				'default'           => '',
+				'sanitize_callback' => 'sanitize_text_field',
+			)
+		);
+
+		register_setting(
+			self::OPTION_GROUP,
+			self::OPTION_CUSTOM_IMAGE_MODELS,
+			array(
+				'type'              => 'string',
+				'default'           => '',
+				'sanitize_callback' => array( __CLASS__, 'sanitize_custom_models' ),
+			)
+		);
+
+		add_settings_section(
+			'hugging_face_image_model_section',
+			__( 'Image Generation Settings', 'ai-provider-for-hugging-face' ),
+			array( __CLASS__, 'render_image_section_description' ),
+			self::PAGE_SLUG
+		);
+
+		add_settings_field(
+			self::OPTION_CUSTOM_IMAGE_MODELS,
+			__( 'Custom Image Models', 'ai-provider-for-hugging-face' ),
+			array( __CLASS__, 'render_custom_image_models_field' ),
+			self::PAGE_SLUG,
+			'hugging_face_image_model_section'
+		);
+
+		add_settings_field(
+			self::OPTION_DEFAULT_IMAGE_MODEL,
+			__( 'Default Image Model', 'ai-provider-for-hugging-face' ),
+			array( __CLASS__, 'render_image_model_field' ),
+			self::PAGE_SLUG,
+			'hugging_face_image_model_section'
 		);
 	}
 
@@ -259,6 +304,131 @@ class AdminPage {
 		$builtin   = $directory->getDefaultModels();
 
 		$custom = self::get_custom_models();
+
+		// Put custom models first so the optgroup renders correctly.
+		return array_merge( $custom, $builtin );
+	}
+
+	/**
+	 * Render the image section description.
+	 */
+	public static function render_image_section_description(): void {
+		echo '<p>' . esc_html__( 'Add custom Hugging Face models and choose which model to use by default for image generation.', 'ai-provider-for-hugging-face' ) . '</p>';
+	}
+
+	/**
+	 * Render the custom image models textarea field.
+	 */
+	public static function render_custom_image_models_field(): void {
+		$value = get_option( self::OPTION_CUSTOM_IMAGE_MODELS, '' );
+
+		printf(
+			'<textarea name="%s" id="%s" rows="4" cols="60" class="large-text code" placeholder="%s">%s</textarea>',
+			esc_attr( self::OPTION_CUSTOM_IMAGE_MODELS ),
+			esc_attr( self::OPTION_CUSTOM_IMAGE_MODELS ),
+			esc_attr( "Qwen/Qwen-Image\nrunwayml/stable-diffusion-v1-5" ),
+			esc_textarea( $value )
+		);
+
+		echo '<p class="description">';
+		echo esc_html__( 'Enter one model ID per line. Use the full HuggingFace model ID (e.g., runwayml/stable-diffusion-v1-5).', 'ai-provider-for-hugging-face' );
+		echo ' <a href="https://huggingface.co/models?inference=warm&pipeline_tag=text-to-image&sort=trending" target="_blank">';
+		echo esc_html__( 'Browse models on HuggingFace', 'ai-provider-for-hugging-face' );
+		echo '</a>';
+		echo '</p>';
+	}
+
+	/**
+	 * Render the image model selection dropdown.
+	 */
+	public static function render_image_model_field(): void {
+		$current = get_option( self::OPTION_DEFAULT_IMAGE_MODEL, '' );
+		$models  = self::get_all_image_models();
+
+		echo '<select name="' . esc_attr( self::OPTION_DEFAULT_IMAGE_MODEL ) . '" id="' . esc_attr( self::OPTION_DEFAULT_IMAGE_MODEL ) . '">';
+		echo '<option value="">' . esc_html__( '— First available (default) —', 'ai-provider-for-hugging-face' ) . '</option>';
+
+		$has_custom = false;
+		foreach ( $models as $model ) {
+			if ( ! empty( $model['custom'] ) && ! $has_custom ) {
+				echo '<optgroup label="' . esc_attr__( 'Custom Models', 'ai-provider-for-hugging-face' ) . '">';
+				$has_custom = true;
+			}
+			if ( empty( $model['custom'] ) && $has_custom ) {
+				echo '</optgroup>';
+				$has_custom = false;
+			}
+
+			printf(
+				'<option value="%s" %s>%s</option>',
+				esc_attr( $model['id'] ),
+				selected( $current, $model['id'], false ),
+				esc_html( $model['name'] . ' (' . $model['id'] . ')' )
+			);
+		}
+
+		if ( $has_custom ) {
+			echo '</optgroup>';
+		}
+
+		echo '</select>';
+		echo '<p class="description">' . esc_html__( 'This model will be used when no specific model preference is set.', 'ai-provider-for-hugging-face' ) . '</p>';
+	}
+
+	/**
+	 * Get the saved default image model ID.
+	 *
+	 * @return string Empty string if no default is set.
+	 */
+	public static function get_default_image_model(): string {
+		return (string) get_option( self::OPTION_DEFAULT_IMAGE_MODEL, '' );
+	}
+
+	/**
+	 * Get parsed custom image models from the setting.
+	 *
+	 * @return array[] Array of model definition arrays with 'id', 'name', 'custom' keys.
+	 */
+	public static function get_custom_image_models(): array {
+		$value = (string) get_option( self::OPTION_CUSTOM_IMAGE_MODELS, '' );
+
+		if ( '' === $value ) {
+			return array();
+		}
+
+		$lines  = explode( "\n", $value );
+		$models = array();
+
+		foreach ( $lines as $line ) {
+			$line = trim( $line );
+			if ( '' === $line ) {
+				continue;
+			}
+
+			// Use the part after the last slash as the display name.
+			$parts = explode( '/', $line );
+			$name  = end( $parts );
+
+			$models[] = array(
+				'id'     => $line,
+				'name'   => $name,
+				'custom' => true,
+			);
+		}
+
+		return $models;
+	}
+
+	/**
+	 * Get all image models (built-in + custom) for the dropdown.
+	 *
+	 * @return array[]
+	 */
+	private static function get_all_image_models(): array {
+		$directory = new HuggingFaceModelMetadataDirectory();
+		$builtin   = $directory->getDefaultImageModels();
+
+		$custom = self::get_custom_image_models();
 
 		// Put custom models first so the optgroup renders correctly.
 		return array_merge( $custom, $builtin );
