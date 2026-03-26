@@ -1,0 +1,32 @@
+# VCS
+.git
+.gitignore
+
+# CI/CD & config
+.distignore
+.editorconfig
+.eslintrc
+.prettierrc
+
+# Claude Code
+.claude
+
+# Development dependencies
+node_modules
+vendor
+
+# Source JS (compiled version is in build/)
+src/js
+
+# Build tooling
+package.json
+package-lock.json
+webpack.config.js
+composer.json
+composer.lock
+
+# IDE
+.vscode
+.idea
+*.swp
+*.swo

@@ -1,0 +1,14 @@
+{
+    "name": "aslamdoctor/ai-provider-for-hugging-face",
+    "description": "AI Provider for Hugging Face for the WordPress AI Client.",
+    "type": "wordpress-plugin",
+    "license": "GPL-2.0-or-later",
+    "require": {
+        "php": ">=7.4"
+    },
+    "autoload": {
+        "psr-4": {
+            "WordPress\\HuggingFaceAiProvider\\": "src/"
+        }
+    }
+}
