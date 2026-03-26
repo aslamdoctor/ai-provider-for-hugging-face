@@ -110,6 +110,75 @@ class HuggingFaceModelMetadataDirectory implements ModelMetadataDirectoryInterfa
 			$models
 		);
 
+		// Build image generation model list.
+		$image_models = $this->getDefaultImageModels();
+
+		// Merge in custom image models from the admin settings page.
+		if ( method_exists( AdminPage::class, 'get_custom_image_models' ) ) {
+			$custom_image_models = AdminPage::get_custom_image_models();
+			foreach ( $custom_image_models as $custom ) {
+				$exists = false;
+				foreach ( $image_models as $model ) {
+					if ( $model['id'] === $custom['id'] ) {
+						$exists = true;
+						break;
+					}
+				}
+				if ( ! $exists ) {
+					$image_models[] = $custom;
+				}
+			}
+		}
+
+		/**
+		 * Filters the list of available Hugging Face image generation models.
+		 *
+		 * @param array $image_models Array of model definition arrays with keys:
+		 *                            'id' (string) - HuggingFace model identifier,
+		 *                            'name' (string) - Human-readable display name.
+		 */
+		$filtered_image_models = apply_filters( 'hugging_face_ai_provider_image_models', $image_models );
+		if ( is_array( $filtered_image_models ) ) {
+			$image_models = $filtered_image_models;
+		}
+
+		// Move the user's chosen default image model to the front of the list.
+		if ( method_exists( AdminPage::class, 'get_default_image_model' ) ) {
+			$default_image_model_id = AdminPage::get_default_image_model();
+			if ( '' !== $default_image_model_id ) {
+				$default_image_index = null;
+				foreach ( $image_models as $index => $model ) {
+					if ( $model['id'] === $default_image_model_id ) {
+						$default_image_index = $index;
+						break;
+					}
+				}
+				if ( null !== $default_image_index ) {
+					$default_image = $image_models[ $default_image_index ];
+					unset( $image_models[ $default_image_index ] );
+					array_unshift( $image_models, $default_image );
+					$image_models = array_values( $image_models );
+				}
+			}
+		}
+
+		$image_capabilities = array( CapabilityEnum::imageGeneration() );
+		$image_options      = $this->imageGenerationOptions();
+
+		$image_metadata = array_map(
+			static function ( array $model ) use ( $image_capabilities, $image_options ): ModelMetadata {
+				return new ModelMetadata(
+					$model['id'],
+					$model['name'],
+					$image_capabilities,
+					$image_options
+				);
+			},
+			$image_models
+		);
+
+		$this->cached_models = array_merge( $this->cached_models, $image_metadata );
+
 		return $this->cached_models;
 	}
 
@@ -178,6 +247,62 @@ class HuggingFaceModelMetadataDirectory implements ModelMetadataDirectoryInterfa
 				'id'   => 'HuggingFaceH4/zephyr-7b-beta',
 				'name' => 'Zephyr 7B Beta',
 			),
+		);
+	}
+
+	/**
+	 * Default curated image generation model list.
+	 *
+	 * These models are popular, well-tested, and available on HuggingFace's
+	 * serverless Inference API for image generation. Use the
+	 * 'hugging_face_ai_provider_image_models' filter to add custom models.
+	 *
+	 * @return array[]
+	 */
+	public function getDefaultImageModels(): array {
+		return array(
+			array(
+				'id'   => 'black-forest-labs/FLUX.1-schnell',
+				'name' => 'FLUX.1 Schnell (Fast)',
+			),
+			array(
+				'id'   => 'black-forest-labs/FLUX.1-dev',
+				'name' => 'FLUX.1 Dev (Quality)',
+			),
+			array(
+				'id'   => 'ByteDance/SDXL-Lightning',
+				'name' => 'SDXL Lightning (Fast)',
+			),
+			array(
+				'id'   => 'stabilityai/stable-diffusion-xl-base-1.0',
+				'name' => 'Stable Diffusion XL',
+			),
+		);
+	}
+
+	/**
+	 * Supported options for image generation models.
+	 *
+	 * inputModalities and outputModalities MUST be declared, or the SDK
+	 * rejects models during capability matching.
+	 *
+	 * @return SupportedOption[]
+	 */
+	private function imageGenerationOptions(): array {
+		return array(
+			new SupportedOption(
+				OptionEnum::inputModalities(),
+				array( array( ModalityEnum::text() ) )
+			),
+			new SupportedOption(
+				OptionEnum::outputModalities(),
+				array( array( ModalityEnum::image() ) )
+			),
+			new SupportedOption(
+				OptionEnum::outputMimeType(),
+				array( 'image/png', 'image/jpeg', 'image/webp' )
+			),
+			new SupportedOption( OptionEnum::customOptions() ),
 		);
 	}
 
