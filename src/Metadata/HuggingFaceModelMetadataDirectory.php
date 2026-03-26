@@ -10,6 +10,7 @@ declare( strict_types=1 );
 namespace WordPress\HuggingFaceAiProvider\Metadata;
 
 use WordPress\AiClient\Common\Exception\InvalidArgumentException;
+use WordPress\AiClient\Files\Enums\FileTypeEnum;
 use WordPress\AiClient\Messages\Enums\ModalityEnum;
 use WordPress\AiClient\Providers\Contracts\ModelMetadataDirectoryInterface;
 use WordPress\AiClient\Providers\Models\DTO\ModelMetadata;
@@ -217,67 +218,161 @@ class HuggingFaceModelMetadataDirectory implements ModelMetadataDirectoryInterfa
 	}
 
 	/**
-	 * Default curated model list.
+	 * Default text generation model list.
 	 *
-	 * These models are popular, well-tested, and available on HuggingFace's
-	 * serverless Inference API. Use the 'hugging_face_ai_provider_models'
-	 * filter to add custom models.
+	 * Fetches warm text-generation models from the HuggingFace API and caches
+	 * the result for 12 hours. Falls back to a hardcoded list if the API
+	 * call fails. Use the 'hugging_face_ai_provider_models' filter to add
+	 * custom models.
 	 *
 	 * @return array[]
 	 */
 	public function getDefaultModels(): array {
+		$cached = get_transient( 'hf_text_models_list' );
+		if ( false !== $cached && is_array( $cached ) && ! empty( $cached ) ) {
+			return $cached;
+		}
+
+		$models = $this->fetchWarmTextModels();
+		if ( ! empty( $models ) ) {
+			set_transient( 'hf_text_models_list', $models, 12 * HOUR_IN_SECONDS );
+			return $models;
+		}
+
+		// Fallback if API is unreachable.
 		return array(
 			array(
 				'id'   => 'mistralai/Mistral-7B-Instruct-v0.3',
-				'name' => 'Mistral 7B Instruct v0.3',
+				'name' => 'Mistral-7B-Instruct-v0.3',
 			),
 			array(
 				'id'   => 'meta-llama/Llama-3.1-8B-Instruct',
-				'name' => 'Llama 3.1 8B Instruct',
+				'name' => 'Llama-3.1-8B-Instruct',
 			),
 			array(
 				'id'   => 'Qwen/Qwen2.5-7B-Instruct',
-				'name' => 'Qwen 2.5 7B Instruct',
+				'name' => 'Qwen2.5-7B-Instruct',
 			),
 			array(
 				'id'   => 'microsoft/Phi-3-mini-4k-instruct',
-				'name' => 'Phi-3 Mini 4K Instruct',
+				'name' => 'Phi-3-mini-4k-instruct',
 			),
 			array(
 				'id'   => 'HuggingFaceH4/zephyr-7b-beta',
-				'name' => 'Zephyr 7B Beta',
+				'name' => 'zephyr-7b-beta',
 			),
 		);
 	}
 
 	/**
-	 * Default curated image generation model list.
+	 * Fetch warm text-generation models from the HuggingFace API.
 	 *
-	 * These models are popular, well-tested, and available on HuggingFace's
-	 * serverless Inference API for image generation. Use the
-	 * 'hugging_face_ai_provider_image_models' filter to add custom models.
+	 * @return array[] Array of model definitions with 'id' and 'name' keys.
+	 */
+	private function fetchWarmTextModels(): array {
+		$response = wp_remote_get(
+			'https://huggingface.co/api/models?pipeline_tag=text-generation&inference=warm&sort=likes&direction=-1&limit=20',
+			array( 'timeout' => 10 )
+		);
+
+		if ( is_wp_error( $response ) ) {
+			return array();
+		}
+
+		$body = json_decode( wp_remote_retrieve_body( $response ), true );
+		if ( ! is_array( $body ) ) {
+			return array();
+		}
+
+		$models = array();
+		foreach ( $body as $item ) {
+			if ( empty( $item['id'] ) ) {
+				continue;
+			}
+			$id    = $item['id'];
+			$parts = explode( '/', $id );
+			$name  = end( $parts );
+
+			$models[] = array(
+				'id'   => $id,
+				'name' => $name,
+			);
+		}
+
+		return $models;
+	}
+
+	/**
+	 * Default image generation model list.
+	 *
+	 * Fetches warm text-to-image models from the HuggingFace API and caches
+	 * the result for 12 hours. Falls back to a hardcoded list if the API
+	 * call fails. Use the 'hugging_face_ai_provider_image_models' filter
+	 * to add custom models.
 	 *
 	 * @return array[]
 	 */
 	public function getDefaultImageModels(): array {
+		$cached = get_transient( 'hf_image_models_list' );
+		if ( false !== $cached && is_array( $cached ) && ! empty( $cached ) ) {
+			return $cached;
+		}
+
+		$models = $this->fetchWarmImageModels();
+		if ( ! empty( $models ) ) {
+			set_transient( 'hf_image_models_list', $models, 12 * HOUR_IN_SECONDS );
+			return $models;
+		}
+
+		// Fallback if API is unreachable.
 		return array(
 			array(
 				'id'   => 'black-forest-labs/FLUX.1-schnell',
-				'name' => 'FLUX.1 Schnell (Fast)',
-			),
-			array(
-				'id'   => 'black-forest-labs/FLUX.1-dev',
-				'name' => 'FLUX.1 Dev (Quality)',
-			),
-			array(
-				'id'   => 'ByteDance/SDXL-Lightning',
-				'name' => 'SDXL Lightning (Fast)',
+				'name' => 'FLUX.1 Schnell',
 			),
 			array(
 				'id'   => 'stabilityai/stable-diffusion-xl-base-1.0',
 				'name' => 'Stable Diffusion XL',
 			),
 		);
+	}
+
+	/**
+	 * Fetch warm text-to-image models from the HuggingFace API.
+	 *
+	 * @return array[] Array of model definitions with 'id' and 'name' keys.
+	 */
+	private function fetchWarmImageModels(): array {
+		$response = wp_remote_get(
+			'https://huggingface.co/api/models?pipeline_tag=text-to-image&inference=warm&sort=likes&direction=-1&limit=20',
+			array( 'timeout' => 10 )
+		);
+
+		if ( is_wp_error( $response ) ) {
+			return array();
+		}
+
+		$body = json_decode( wp_remote_retrieve_body( $response ), true );
+		if ( ! is_array( $body ) ) {
+			return array();
+		}
+
+		$models = array();
+		foreach ( $body as $item ) {
+			if ( empty( $item['id'] ) ) {
+				continue;
+			}
+			$id    = $item['id'];
+			$parts = explode( '/', $id );
+			$name  = end( $parts );
+
+			$models[] = array(
+				'id'   => $id,
+				'name' => $name,
+			);
+		}
+
+		return $models;
 	}
 
 	/**
@@ -301,6 +396,10 @@ class HuggingFaceModelMetadataDirectory implements ModelMetadataDirectoryInterfa
 			new SupportedOption(
 				OptionEnum::outputMimeType(),
 				array( 'image/png', 'image/jpeg', 'image/webp' )
+			),
+			new SupportedOption(
+				OptionEnum::outputFileType(),
+				array( FileTypeEnum::inline(), FileTypeEnum::remote() )
 			),
 			new SupportedOption( OptionEnum::customOptions() ),
 		);
