@@ -21,6 +21,7 @@ use WordPress\AiClient\Providers\Http\Enums\RequestAuthenticationMethod;
 use WordPress\AiClient\Providers\Models\Contracts\ModelInterface;
 use WordPress\AiClient\Providers\Models\DTO\ModelMetadata;
 use WordPress\HuggingFaceAiProvider\Metadata\HuggingFaceModelMetadataDirectory;
+use WordPress\HuggingFaceAiProvider\Models\HuggingFaceImageGenerationModel;
 use WordPress\HuggingFaceAiProvider\Models\HuggingFaceTextGenerationModel;
 
 /**
@@ -64,6 +65,10 @@ class HuggingFaceProvider extends AbstractApiProvider {
 			if ( $capability->isTextGeneration() ) {
 				return new HuggingFaceTextGenerationModel( $model_metadata, $provider_metadata );
 			}
+
+			if ( $capability->isImageGeneration() ) {
+				return new HuggingFaceImageGenerationModel( $model_metadata, $provider_metadata );
+			}
 		}
 
 		throw new RuntimeException(
@@ -86,7 +91,7 @@ class HuggingFaceProvider extends AbstractApiProvider {
 		);
 
 		if ( version_compare( AiClient::VERSION, '1.2.0', '>=' ) ) {
-			$args[] = __( 'Text generation with open-source models via Hugging Face Inference API.', 'ai-provider-for-hugging-face' );
+			$args[] = __( 'Text and image generation with open-source models via Hugging Face Inference API.', 'ai-provider-for-hugging-face' );
 		}
 
 		// Provider logo support was added in 1.3.0.
