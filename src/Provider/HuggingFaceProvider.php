@@ -12,7 +12,7 @@ namespace WordPress\HuggingFaceAiProvider\Provider;
 use WordPress\AiClient\AiClient;
 use WordPress\AiClient\Common\Exception\RuntimeException;
 use WordPress\AiClient\Providers\ApiBasedImplementation\AbstractApiProvider;
-use WordPress\AiClient\Providers\ApiBasedImplementation\ListModelsApiBasedProviderAvailability;
+use WordPress\HuggingFaceAiProvider\Provider\HuggingFaceProviderAvailability;
 use WordPress\AiClient\Providers\Contracts\ModelMetadataDirectoryInterface;
 use WordPress\AiClient\Providers\Contracts\ProviderAvailabilityInterface;
 use WordPress\AiClient\Providers\DTO\ProviderMetadata;
@@ -110,9 +110,7 @@ class HuggingFaceProvider extends AbstractApiProvider {
 	 * @return ProviderAvailabilityInterface
 	 */
 	protected static function createProviderAvailability(): ProviderAvailabilityInterface {
-		return new ListModelsApiBasedProviderAvailability(
-			static::modelMetadataDirectory()
-		);
+		return new HuggingFaceProviderAvailability();
 	}
 
 	/**
