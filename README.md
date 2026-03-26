@@ -1,15 +1,17 @@
 # AI Provider for Hugging Face
 
-AI Provider for Hugging Face for the WordPress AI Client. Use open-source models like Mistral, Llama, Qwen, and thousands more through the standard WordPress AI API.
+AI Provider for Hugging Face for the WordPress AI Client. Use open-source models like Mistral, Llama, Qwen, and thousands more for text and image generation through the standard WordPress AI API.
 
 ## Features
 
 - Registers Hugging Face on the **Settings > Connectors** admin screen
 - API key management via environment variable, PHP constant, or the admin UI
 - Text generation through `wp_ai_client_prompt()`
-- Curated default models (Mistral 7B, Llama 3.1 8B, Qwen 2.5 7B, Phi-3 Mini, Zephyr 7B)
+- Image generation through `wp_ai_client_prompt()->generate_image()`
+- Curated default text models (Mistral 7B, Llama 3.1 8B, Qwen 2.5 7B, Phi-3 Mini, Zephyr 7B)
+- Curated default image models (FLUX.1 Schnell, FLUX.1 Dev, SDXL Lightning, Stable Diffusion XL)
 - Add custom models from the **Settings > Hugging Face** admin page
-- Extensible model list via the `hugging_face_ai_provider_models` filter
+- Extensible model list via the `hugging_face_ai_provider_models` and `hugging_face_ai_provider_image_models` filters
 - Configurable base URL for self-hosted TGI instances
 
 ## Requirements
@@ -74,6 +76,14 @@ $schema = array(
 $json = wp_ai_client_prompt( 'Analyze this text.' )
     ->as_json_response( $schema )
     ->generate_text();
+
+// Generate an image
+$image = wp_ai_client_prompt( 'A futuristic WordPress logo in neon colors' )
+    ->generate_image();
+
+if ( ! is_wp_error( $image ) ) {
+    echo '<img src="' . esc_url( $image->getDataUri() ) . '" alt="">';
+}
 ```
 
 ## Extensibility
@@ -90,10 +100,30 @@ add_filter( 'hugging_face_ai_provider_models', function ( array $models ): array
 } );
 ```
 
+### Add custom image models via filter
+
+```php
+add_filter( 'hugging_face_ai_provider_image_models', function ( array $models ): array {
+    $models[] = array(
+        'id'   => 'CompVis/stable-diffusion-v1-4',
+        'name' => 'Stable Diffusion v1.4',
+    );
+    return $models;
+} );
+```
+
 ### Use a self-hosted TGI instance
 
 ```php
 add_filter( 'hugging_face_ai_provider_base_url', function (): string {
+    return 'http://localhost:8080/v1';
+} );
+```
+
+### Custom image generation endpoint
+
+```php
+add_filter( 'hugging_face_ai_provider_image_url', function (): string {
     return 'http://localhost:8080/v1';
 } );
 ```
