@@ -70,6 +70,11 @@ Yes. Use the `hugging_face_ai_provider_base_url` filter for text generation or `
 
 Text generation and image generation. Video generation support may be added in future versions.
 
+== Screenshots ==
+
+1. Settings > Connectors screen showing Hugging Face connected with API key.
+2. Settings > Hugging Face admin page with text and image model configuration.
+
 == External Services ==
 
 This plugin connects to the Hugging Face Inference API to provide AI-powered text and image generation capabilities within WordPress. The Hugging Face Inference API is a third-party service operated by Hugging Face, Inc.

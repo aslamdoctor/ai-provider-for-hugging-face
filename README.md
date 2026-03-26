@@ -48,6 +48,8 @@ Set your API key using any of these methods (checked in order):
    ```
 3. **Admin UI:** Go to **Settings > Connectors** and enter your key.
 
+![Settings > Connectors screen showing Hugging Face connected](assets/screenshot-1.png)
+
 ### Model Settings
 
 Go to **Settings > Hugging Face** to:
@@ -56,6 +58,8 @@ Go to **Settings > Hugging Face** to:
 - Add custom models (type a model ID and click Add)
 
 The dropdowns show the top 20 most popular models, refreshed automatically. Custom models you add appear instantly in the dropdown.
+
+![Settings > Hugging Face admin page with text and image model settings](assets/screenshot-2.png)
 
 ## Usage
 
