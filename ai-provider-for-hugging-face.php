@@ -89,7 +89,7 @@ add_action( 'init', __NAMESPACE__ . '\\register_connector_module' );
  * Enqueue the connector module on the Connectors admin page.
  */
 function enqueue_connector_module(): void {
-	$logo_url = plugins_url( 'assets/hugging-face-logo.svg', HUGGING_FACE_PROVIDER_FILE );
+	$logo_url = plugins_url( 'images/hugging-face-logo.svg', HUGGING_FACE_PROVIDER_FILE );
 	wp_add_inline_script(
 		'wp-api-fetch',
 		sprintf( 'window.huggingFaceProviderData = %s;', wp_json_encode( array( 'logoUrl' => $logo_url ) ) ),

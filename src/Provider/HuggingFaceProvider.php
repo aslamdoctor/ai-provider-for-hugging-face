@@ -95,10 +95,8 @@ class HuggingFaceProvider extends AbstractApiProvider {
 		}
 
 		// Provider logo support was added in 1.3.0.
-		// Use WP_PLUGIN_DIR to build the path so it resolves correctly even when
-		// the plugin is symlinked (dirname(__DIR__) would resolve the real path).
 		if ( version_compare( AiClient::VERSION, '1.3.0', '>=' ) ) {
-			$args[] = WP_PLUGIN_DIR . '/ai-provider-for-hugging-face/assets/hugging-face-logo.svg';
+			$args[] = plugin_dir_path( HUGGING_FACE_PROVIDER_FILE ) . 'images/hugging-face-logo.svg';
 		}
 
 		return new ProviderMetadata( ...$args );

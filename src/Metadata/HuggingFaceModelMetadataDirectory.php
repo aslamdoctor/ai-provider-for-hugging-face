@@ -228,14 +228,14 @@ class HuggingFaceModelMetadataDirectory implements ModelMetadataDirectoryInterfa
 	 * @return array[]
 	 */
 	public function getDefaultModels(): array {
-		$cached = get_transient( 'hf_text_models_list' );
+		$cached = get_transient( 'aiprfohu_text_models_list' );
 		if ( false !== $cached && is_array( $cached ) && ! empty( $cached ) ) {
 			return $cached;
 		}
 
 		$models = $this->fetchWarmTextModels();
 		if ( ! empty( $models ) ) {
-			set_transient( 'hf_text_models_list', $models, 12 * HOUR_IN_SECONDS );
+			set_transient( 'aiprfohu_text_models_list', $models, 12 * HOUR_IN_SECONDS );
 			return $models;
 		}
 
@@ -313,14 +313,14 @@ class HuggingFaceModelMetadataDirectory implements ModelMetadataDirectoryInterfa
 	 * @return array[]
 	 */
 	public function getDefaultImageModels(): array {
-		$cached = get_transient( 'hf_image_models_list' );
+		$cached = get_transient( 'aiprfohu_image_models_list' );
 		if ( false !== $cached && is_array( $cached ) && ! empty( $cached ) ) {
 			return $cached;
 		}
 
 		$models = $this->fetchWarmImageModels();
 		if ( ! empty( $models ) ) {
-			set_transient( 'hf_image_models_list', $models, 12 * HOUR_IN_SECONDS );
+			set_transient( 'aiprfohu_image_models_list', $models, 12 * HOUR_IN_SECONDS );
 			return $models;
 		}
 

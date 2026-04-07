@@ -41,8 +41,8 @@ This plugin registers Hugging Face as an AI provider for the WordPress AI Client
 
 1. Upload the plugin to the `/wp-content/plugins/ai-provider-for-hugging-face` directory.
 2. Activate the plugin through the 'Plugins' menu in WordPress.
-3. Go to Settings > Connectors and enter your Hugging Face API key.
-4. Get your API key from [Hugging Face Tokens](https://huggingface.co/settings/tokens).
+3. Go to [Hugging Face Tokens](https://huggingface.co/settings/tokens) and create a new Access Token with **Read** permission.
+4. Go to Settings > Connectors and enter your Hugging Face API token.
 
 You can also set the API key via environment variable or PHP constant:
 

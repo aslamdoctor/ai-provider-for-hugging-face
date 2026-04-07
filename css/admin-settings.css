@@ -1,0 +1,39 @@
+.aiprfohu-custom-models__input-row {
+	display: flex;
+	gap: 8px;
+	align-items: center;
+	margin-bottom: 8px;
+	width: 100%;
+	max-width: 25rem;
+}
+.aiprfohu-custom-models__input {
+	flex: 1;
+}
+.aiprfohu-custom-models__tags {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin-bottom: 8px;
+}
+.aiprfohu-custom-models__tag {
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	background: #f0f0f1;
+	border: 1px solid #c3c4c7;
+	border-radius: 3px;
+	padding: 2px 8px;
+	font-size: 13px;
+}
+.aiprfohu-custom-models__remove {
+	background: none;
+	border: none;
+	cursor: pointer;
+	color: #a00;
+	font-size: 16px;
+	line-height: 1;
+	padding: 0 2px;
+}
+.aiprfohu-custom-models__remove:hover {
+	color: #dc3232;
+}

@@ -22,7 +22,6 @@ phpstan.neon
 phpstan.neon.dist
 phpunit.xml
 phpunit.xml.dist
-composer.json
 composer.lock
 package.json
 package-lock.json
@@ -51,3 +50,9 @@ CONTRIBUTING.md
 
 # Logs
 *.log
+
+# WordPress.org directory assets (uploaded via SVN, not in plugin zip)
+assets/screenshot-*.png
+
+# Docs (not needed in plugin zip)
+docs

@@ -121,7 +121,7 @@ class HuggingFaceImageGenerationModel extends AbstractApiBasedModel implements I
 	 * @return array{provider: string, providerId: string} The provider name and its model ID.
 	 */
 	private function resolveProvider( string $model_id ): array {
-		$cache_key = 'hf_img_provider_' . md5( $model_id );
+		$cache_key = 'aiprfohu_img_provider_' . md5( $model_id );
 		$cached    = get_transient( $cache_key );
 
 		if ( false !== $cached && is_array( $cached ) ) {

@@ -33,6 +33,7 @@ class AdminPage {
 	public static function register(): void {
 		add_action( 'admin_menu', array( __CLASS__, 'add_menu_page' ) );
 		add_action( 'admin_init', array( __CLASS__, 'register_settings' ) );
+		add_action( 'admin_enqueue_scripts', array( __CLASS__, 'enqueue_admin_assets' ) );
 	}
 
 	/**
@@ -45,6 +46,32 @@ class AdminPage {
 			'manage_options',
 			self::PAGE_SLUG,
 			array( __CLASS__, 'render_page' )
+		);
+	}
+
+	/**
+	 * Enqueue admin CSS and JS on the plugin settings page only.
+	 *
+	 * @param string $hook_suffix The current admin page hook suffix.
+	 */
+	public static function enqueue_admin_assets( string $hook_suffix ): void {
+		if ( 'settings_page_' . self::PAGE_SLUG !== $hook_suffix ) {
+			return;
+		}
+
+		wp_enqueue_style(
+			'aiprfohu-admin-settings',
+			plugins_url( 'css/admin-settings.css', HUGGING_FACE_PROVIDER_FILE ),
+			array(),
+			HUGGING_FACE_PROVIDER_VERSION
+		);
+
+		wp_enqueue_script(
+			'aiprfohu-admin-settings',
+			plugins_url( 'js/admin-settings.js', HUGGING_FACE_PROVIDER_FILE ),
+			array(),
+			HUGGING_FACE_PROVIDER_VERSION,
+			true
 		);
 	}
 
@@ -209,20 +236,20 @@ class AdminPage {
 		$value  = get_option( $hidden_name, '' );
 		$models = array_filter( array_map( 'trim', explode( "\n", (string) $value ) ) );
 		?>
-		<div class="hf-custom-models" data-hidden-id="<?php echo esc_attr( $hidden_id ); ?>" data-select-id="<?php echo esc_attr( $select_id ); ?>">
-			<div class="hf-custom-models__input-row">
+		<div class="aiprfohu-custom-models" data-hidden-id="<?php echo esc_attr( $hidden_id ); ?>" data-select-id="<?php echo esc_attr( $select_id ); ?>">
+			<div class="aiprfohu-custom-models__input-row">
 				<input type="text"
-					class="hf-custom-models__input"
+					class="aiprfohu-custom-models__input"
 					placeholder="<?php echo esc_attr( $placeholder ); ?>" />
-				<button type="button" class="button hf-custom-models__add">
+				<button type="button" class="button aiprfohu-custom-models__add">
 					<?php esc_html_e( 'Add', 'ai-provider-for-hugging-face' ); ?>
 				</button>
 			</div>
-			<div class="hf-custom-models__tags">
+			<div class="aiprfohu-custom-models__tags">
 				<?php foreach ( $models as $model_id ) : ?>
-					<span class="hf-custom-models__tag">
+					<span class="aiprfohu-custom-models__tag">
 						<?php echo esc_html( $model_id ); ?>
-						<button type="button" class="hf-custom-models__remove" data-model="<?php echo esc_attr( $model_id ); ?>">&times;</button>
+						<button type="button" class="aiprfohu-custom-models__remove" data-model="<?php echo esc_attr( $model_id ); ?>">&times;</button>
 					</span>
 				<?php endforeach; ?>
 			</div>
@@ -250,7 +277,7 @@ class AdminPage {
 		$current = get_option( self::OPTION_DEFAULT_MODEL, '' );
 		$models  = self::get_all_models();
 
-		self::render_model_dropdown( self::OPTION_DEFAULT_MODEL, $current, $models, 'hf-text-model-select' );
+		self::render_model_dropdown( self::OPTION_DEFAULT_MODEL, $current, $models, 'aiprfohu-text-model-select' );
 		echo '<p class="description">' . esc_html__( 'Showing top 20 most popular models. Add more via Custom Models below.', 'ai-provider-for-hugging-face' ) . '</p>';
 	}
 
@@ -260,8 +287,8 @@ class AdminPage {
 	public static function render_custom_models_field(): void {
 		self::render_custom_model_input(
 			self::OPTION_CUSTOM_MODELS,
-			'hf-custom-text-models',
-			'hf-text-model-select',
+			'aiprfohu-custom-text-models',
+			'aiprfohu-text-model-select',
 			'https://huggingface.co/models?inference=warm&pipeline_tag=text-generation&sort=likes&direction=-1',
 			'org/model-name'
 		);
@@ -274,7 +301,7 @@ class AdminPage {
 		$current = get_option( self::OPTION_DEFAULT_IMAGE_MODEL, '' );
 		$models  = self::get_all_image_models();
 
-		self::render_model_dropdown( self::OPTION_DEFAULT_IMAGE_MODEL, $current, $models, 'hf-image-model-select' );
+		self::render_model_dropdown( self::OPTION_DEFAULT_IMAGE_MODEL, $current, $models, 'aiprfohu-image-model-select' );
 		echo '<p class="description">' . esc_html__( 'Showing top 20 most popular models. Add more via Custom Image Models below.', 'ai-provider-for-hugging-face' ) . '</p>';
 	}
 
@@ -284,8 +311,8 @@ class AdminPage {
 	public static function render_custom_image_models_field(): void {
 		self::render_custom_model_input(
 			self::OPTION_CUSTOM_IMAGE_MODELS,
-			'hf-custom-image-models',
-			'hf-image-model-select',
+			'aiprfohu-custom-image-models',
+			'aiprfohu-image-model-select',
 			'https://huggingface.co/models?inference=warm&pipeline_tag=text-to-image&sort=likes&direction=-1',
 			'org/model-name'
 		);
@@ -299,8 +326,6 @@ class AdminPage {
 			return;
 		}
 
-		self::render_inline_styles();
-
 		echo '<div class="wrap">';
 		echo '<h1>' . esc_html( get_admin_page_title() ) . '</h1>';
 
@@ -312,180 +337,6 @@ class AdminPage {
 		submit_button();
 		echo '</form>';
 		echo '</div>';
-
-		self::render_inline_script();
-	}
-
-	/**
-	 * Render the inline JavaScript for custom model add/remove and dropdown sync.
-	 */
-	/**
-	 * Render the inline CSS for custom model UI components.
-	 */
-	private static function render_inline_styles(): void {
-		?>
-		<style>
-			.hf-custom-models__input-row {
-				display: flex;
-				gap: 8px;
-				align-items: center;
-				margin-bottom: 8px;
-				width: 100%;
-				max-width: 25rem;
-			}
-			.hf-custom-models__input {
-				flex: 1;
-			}
-			.hf-custom-models__tags {
-				display: flex;
-				flex-wrap: wrap;
-				gap: 6px;
-				margin-bottom: 8px;
-			}
-			.hf-custom-models__tag {
-				display: inline-flex;
-				align-items: center;
-				gap: 4px;
-				background: #f0f0f1;
-				border: 1px solid #c3c4c7;
-				border-radius: 3px;
-				padding: 2px 8px;
-				font-size: 13px;
-			}
-			.hf-custom-models__remove {
-				background: none;
-				border: none;
-				cursor: pointer;
-				color: #a00;
-				font-size: 16px;
-				line-height: 1;
-				padding: 0 2px;
-			}
-			.hf-custom-models__remove:hover {
-				color: #dc3232;
-			}
-		</style>
-		<?php
-	}
-
-	/**
-	 * Render the inline JavaScript for custom model add/remove and dropdown sync.
-	 */
-	private static function render_inline_script(): void {
-		?>
-		<script>
-		(function() {
-			document.querySelectorAll('.hf-custom-models').forEach(function(container) {
-				var hiddenId = container.dataset.hiddenId;
-				var selectId = container.dataset.selectId;
-				var hidden   = document.getElementById(hiddenId);
-				var select   = document.getElementById(selectId);
-				var input    = container.querySelector('.hf-custom-models__input');
-				var addBtn   = container.querySelector('.hf-custom-models__add');
-				var tagsWrap = container.querySelector('.hf-custom-models__tags');
-
-				function getModels() {
-					return hidden.value.split('\n').map(function(s) { return s.trim(); }).filter(Boolean);
-				}
-
-				function setModels(models) {
-					hidden.value = models.join('\n');
-				}
-
-				function syncSelect(models) {
-					// Find or create the Custom Models optgroup.
-					var optgroup = select.querySelector('optgroup[label="Custom Models"]');
-					if (!optgroup) {
-						optgroup = document.createElement('optgroup');
-						optgroup.label = 'Custom Models';
-						// Insert after the first option (the default "— First available —").
-						select.insertBefore(optgroup, select.options[1] || null);
-					}
-
-					// Clear existing custom options.
-					while (optgroup.firstChild) {
-						optgroup.removeChild(optgroup.firstChild);
-					}
-
-					// Add current custom models.
-					models.forEach(function(modelId) {
-						var parts = modelId.split('/');
-						var name  = parts[parts.length - 1];
-						var opt   = document.createElement('option');
-						opt.value = modelId;
-						opt.textContent = name + ' (' + modelId + ')';
-						optgroup.appendChild(opt);
-					});
-
-					// Remove optgroup if empty.
-					if (models.length === 0 && optgroup.parentNode) {
-						optgroup.parentNode.removeChild(optgroup);
-					}
-				}
-
-				function renderTags(models) {
-					tagsWrap.innerHTML = '';
-					models.forEach(function(modelId) {
-						var tag = document.createElement('span');
-						tag.className = 'hf-custom-models__tag';
-						tag.textContent = modelId;
-
-						var btn = document.createElement('button');
-						btn.type = 'button';
-						btn.className = 'hf-custom-models__remove';
-						btn.dataset.model = modelId;
-						btn.innerHTML = '&times;';
-						tag.appendChild(btn);
-						tagsWrap.appendChild(tag);
-					});
-				}
-
-				function addModel() {
-					var val = input.value.trim();
-					if (!val) return;
-
-					var models = getModels();
-					if (models.indexOf(val) !== -1) {
-						input.value = '';
-						return;
-					}
-
-					models.push(val);
-					setModels(models);
-					renderTags(models);
-					syncSelect(models);
-					input.value = '';
-					input.focus();
-				}
-
-				addBtn.addEventListener('click', addModel);
-				input.addEventListener('keydown', function(e) {
-					if (e.key === 'Enter') {
-						e.preventDefault();
-						addModel();
-					}
-				});
-
-				tagsWrap.addEventListener('click', function(e) {
-					var removeBtn = e.target.closest('.hf-custom-models__remove');
-					if (!removeBtn) return;
-
-					var modelId = removeBtn.dataset.model;
-					var models  = getModels().filter(function(m) { return m !== modelId; });
-
-					// If the removed model was selected in the dropdown, reset to default.
-					if (select.value === modelId) {
-						select.value = '';
-					}
-
-					setModels(models);
-					renderTags(models);
-					syncSelect(models);
-				});
-			});
-		})();
-		</script>
-		<?php
 	}
 
 	/**
