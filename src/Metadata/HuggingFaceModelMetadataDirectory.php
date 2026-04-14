@@ -220,10 +220,10 @@ class HuggingFaceModelMetadataDirectory implements ModelMetadataDirectoryInterfa
 	/**
 	 * Default text generation model list.
 	 *
-	 * Fetches warm text-generation models from the HuggingFace API and caches
-	 * the result for 12 hours. Falls back to a hardcoded list if the API
-	 * call fails. Use the 'hugging_face_ai_provider_models' filter to add
-	 * custom models.
+	 * Fetches top text-generation models from all inference providers via
+	 * the HuggingFace API, including pricing info. Results are cached for
+	 * 12 hours. Falls back to a hardcoded list if the API call fails. Use
+	 * the 'hugging_face_ai_provider_models' filter to add custom models.
 	 *
 	 * @return array[]
 	 */
@@ -233,47 +233,59 @@ class HuggingFaceModelMetadataDirectory implements ModelMetadataDirectoryInterfa
 			return $cached;
 		}
 
-		$models = $this->fetchWarmTextModels();
+		$models = $this->fetchTextModelsFromProviders();
 		if ( ! empty( $models ) ) {
 			set_transient( 'aiprfohu_text_models_list', $models, 12 * HOUR_IN_SECONDS );
 			return $models;
 		}
 
-		// Fallback if API is unreachable.
+		// Fallback if API is unreachable. Only models with broad provider support.
 		return array(
 			array(
-				'id'   => 'mistralai/Mistral-7B-Instruct-v0.3',
-				'name' => 'Mistral-7B-Instruct-v0.3',
+				'id'   => 'meta-llama/Llama-3.3-70B-Instruct',
+				'name' => 'Llama-3.3-70B-Instruct',
+			),
+			array(
+				'id'   => 'openai/gpt-oss-120b',
+				'name' => 'gpt-oss-120b',
 			),
 			array(
 				'id'   => 'meta-llama/Llama-3.1-8B-Instruct',
 				'name' => 'Llama-3.1-8B-Instruct',
 			),
 			array(
-				'id'   => 'Qwen/Qwen2.5-7B-Instruct',
-				'name' => 'Qwen2.5-7B-Instruct',
+				'id'   => 'deepseek-ai/DeepSeek-R1',
+				'name' => 'DeepSeek-R1',
 			),
 			array(
-				'id'   => 'microsoft/Phi-3-mini-4k-instruct',
-				'name' => 'Phi-3-mini-4k-instruct',
-			),
-			array(
-				'id'   => 'HuggingFaceH4/zephyr-7b-beta',
-				'name' => 'zephyr-7b-beta',
+				'id'   => 'deepseek-ai/DeepSeek-V3-0324',
+				'name' => 'DeepSeek-V3-0324',
 			),
 		);
 	}
 
 	/**
-	 * Fetch warm text-generation models from the HuggingFace API.
+	 * Fetch chat-compatible text-generation models from all inference providers.
 	 *
-	 * @return array[] Array of model definitions with 'id' and 'name' keys.
+	 * Requests more than 20 models and filters to only those whose inference
+	 * providers list the 'conversational' task, returning up to 20 results.
+	 *
+	 * @return array[] Array of model definitions with 'id', 'name', and 'price_label' keys.
 	 */
-	private function fetchWarmTextModels(): array {
-		$response = wp_remote_get(
-			'https://huggingface.co/api/models?pipeline_tag=text-generation&inference=warm&sort=likes&direction=-1&limit=20',
-			array( 'timeout' => 10 )
+	private function fetchTextModelsFromProviders(): array {
+		$url = add_query_arg(
+			array(
+				'pipeline_tag'        => 'text-generation',
+				'inference_provider'  => 'all',
+				'sort'                => 'likes',
+				'direction'           => '-1',
+				'limit'               => '30',
+				'expand[]'            => 'inferenceProviderMapping',
+			),
+			'https://huggingface.co/api/models'
 		);
+
+		$response = wp_remote_get( $url, array( 'timeout' => 10 ) );
 
 		if ( is_wp_error( $response ) ) {
 			return array();
@@ -289,26 +301,99 @@ class HuggingFaceModelMetadataDirectory implements ModelMetadataDirectoryInterfa
 			if ( empty( $item['id'] ) ) {
 				continue;
 			}
+
+			// Only include models that support the conversational (chat) task.
+			if ( ! $this->hasConversationalProvider( $item ) ) {
+				continue;
+			}
+
 			$id    = $item['id'];
 			$parts = explode( '/', $id );
 			$name  = end( $parts );
 
 			$models[] = array(
-				'id'   => $id,
-				'name' => $name,
+				'id'          => $id,
+				'name'        => $name,
+				'price_label' => $this->buildPriceLabel( $item ),
 			);
+
+			if ( count( $models ) >= 20 ) {
+				break;
+			}
 		}
 
 		return $models;
 	}
 
 	/**
+	 * Check if a model has at least one inference provider with the 'conversational' task.
+	 *
+	 * @param array $item A single model item from the HuggingFace API response.
+	 * @return bool
+	 */
+	private function hasConversationalProvider( array $item ): bool {
+		$providers = $item['inferenceProviderMapping'] ?? array();
+		foreach ( $providers as $provider ) {
+			if ( 'conversational' === ( $provider['task'] ?? '' ) ) {
+				return true;
+			}
+		}
+		return false;
+	}
+
+	/**
+	 * Build a human-readable price label from a model's inference provider mapping.
+	 *
+	 * Models on the hf-inference provider or with input pricing under $0.10/M
+	 * tokens are labelled "Free tier" since they fit comfortably within the
+	 * $0.10/month free credit every HuggingFace account receives.
+	 *
+	 * @param array $item A single model item from the HuggingFace API response.
+	 * @return string Price label such as 'Free tier', 'from $0.70/M tokens', or empty string.
+	 */
+	private function buildPriceLabel( array $item ): string {
+		$providers = $item['inferenceProviderMapping'] ?? array();
+
+		$has_hf_inference = false;
+		$cheapest_input   = null;
+
+		foreach ( $providers as $provider ) {
+			if ( 'hf-inference' === ( $provider['provider'] ?? '' ) ) {
+				$has_hf_inference = true;
+			}
+			$pricing = $provider['providerDetails']['pricing'] ?? null;
+			if ( is_array( $pricing ) && isset( $pricing['input'] ) ) {
+				$input = (float) $pricing['input'];
+				if ( null === $cheapest_input || $input < $cheapest_input ) {
+					$cheapest_input = $input;
+				}
+			}
+		}
+
+		if ( $has_hf_inference || ( null !== $cheapest_input && $cheapest_input < 0.10 ) ) {
+			return 'Free tier';
+		}
+
+		if ( null !== $cheapest_input ) {
+			return 'from $' . number_format( $cheapest_input, 2 ) . '/M tokens';
+		}
+
+		// Image models have compute-time billing with no per-token pricing.
+		if ( ! empty( $providers ) ) {
+			return 'Paid';
+		}
+
+		return '';
+	}
+
+	/**
 	 * Default image generation model list.
 	 *
-	 * Fetches warm text-to-image models from the HuggingFace API and caches
-	 * the result for 12 hours. Falls back to a hardcoded list if the API
-	 * call fails. Use the 'hugging_face_ai_provider_image_models' filter
-	 * to add custom models.
+	 * Fetches top text-to-image models from all inference providers via
+	 * the HuggingFace API, including pricing info. Results are cached for
+	 * 12 hours. Falls back to a hardcoded list if the API call fails. Use
+	 * the 'hugging_face_ai_provider_image_models' filter to add custom
+	 * models.
 	 *
 	 * @return array[]
 	 */
@@ -318,35 +403,61 @@ class HuggingFaceModelMetadataDirectory implements ModelMetadataDirectoryInterfa
 			return $cached;
 		}
 
-		$models = $this->fetchWarmImageModels();
+		$models = $this->fetchImageModelsFromProviders();
 		if ( ! empty( $models ) ) {
 			set_transient( 'aiprfohu_image_models_list', $models, 12 * HOUR_IN_SECONDS );
 			return $models;
 		}
 
-		// Fallback if API is unreachable.
+		// Fallback if API is unreachable. Only models with broad provider support.
 		return array(
 			array(
-				'id'   => 'black-forest-labs/FLUX.1-schnell',
-				'name' => 'FLUX.1 Schnell',
+				'id'          => 'black-forest-labs/FLUX.1-schnell',
+				'name'        => 'FLUX.1 Schnell',
+				'price_label' => 'Free tier',
 			),
 			array(
-				'id'   => 'stabilityai/stable-diffusion-xl-base-1.0',
-				'name' => 'Stable Diffusion XL',
+				'id'          => 'stabilityai/stable-diffusion-xl-base-1.0',
+				'name'        => 'Stable Diffusion XL',
+				'price_label' => 'Paid',
+			),
+			array(
+				'id'          => 'black-forest-labs/FLUX.1-dev',
+				'name'        => 'FLUX.1 Dev',
+				'price_label' => 'Paid',
+			),
+			array(
+				'id'          => 'stabilityai/stable-diffusion-3.5-large',
+				'name'        => 'Stable Diffusion 3.5 Large',
+				'price_label' => 'Paid',
+			),
+			array(
+				'id'          => 'Tongyi-MAI/Z-Image-Turbo',
+				'name'        => 'Z-Image-Turbo',
+				'price_label' => 'Paid',
 			),
 		);
 	}
 
 	/**
-	 * Fetch warm text-to-image models from the HuggingFace API.
+	 * Fetch text-to-image models from all inference providers.
 	 *
-	 * @return array[] Array of model definitions with 'id' and 'name' keys.
+	 * @return array[] Array of model definitions with 'id', 'name', and 'price_label' keys.
 	 */
-	private function fetchWarmImageModels(): array {
-		$response = wp_remote_get(
-			'https://huggingface.co/api/models?pipeline_tag=text-to-image&inference=warm&sort=likes&direction=-1&limit=20',
-			array( 'timeout' => 10 )
+	private function fetchImageModelsFromProviders(): array {
+		$url = add_query_arg(
+			array(
+				'pipeline_tag'        => 'text-to-image',
+				'inference_provider'  => 'all',
+				'sort'                => 'likes',
+				'direction'           => '-1',
+				'limit'               => '20',
+				'expand[]'            => 'inferenceProviderMapping',
+			),
+			'https://huggingface.co/api/models'
 		);
+
+		$response = wp_remote_get( $url, array( 'timeout' => 10 ) );
 
 		if ( is_wp_error( $response ) ) {
 			return array();
@@ -367,8 +478,9 @@ class HuggingFaceModelMetadataDirectory implements ModelMetadataDirectoryInterfa
 			$name  = end( $parts );
 
 			$models[] = array(
-				'id'   => $id,
-				'name' => $name,
+				'id'          => $id,
+				'name'        => $name,
+				'price_label' => $this->buildPriceLabel( $item ),
 			);
 		}
 

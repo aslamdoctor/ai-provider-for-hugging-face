@@ -204,11 +204,15 @@ class AdminPage {
 				echo '</optgroup>';
 				$in_custom_group = false;
 			}
+			$label = $model['name'] . ' (' . $model['id'] . ')';
+			if ( ! empty( $model['price_label'] ) ) {
+				$label .= ' [' . $model['price_label'] . ']';
+			}
 			printf(
 				'<option value="%s" %s>%s</option>',
 				esc_attr( $model['id'] ),
 				selected( $current, $model['id'], false ),
-				esc_html( $model['name'] . ' (' . $model['id'] . ')' )
+				esc_html( $label )
 			);
 		}
 		if ( $in_custom_group ) {
