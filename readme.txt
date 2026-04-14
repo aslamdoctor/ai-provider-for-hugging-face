@@ -4,7 +4,7 @@ Tags: ai, hugging-face, ai-client, connectors, image-generation
 Requires at least: 7.0
 Tested up to: 7.0
 Requires PHP: 7.4
-Stable tag: 1.0.0
+Stable tag: 1.1.0
 License: GPL-2.0-or-later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -100,6 +100,13 @@ Data is only sent when the plugin is actively used to generate text or images, o
 All API communication is routed through `https://router.huggingface.co` and `https://huggingface.co/api`.
 
 == Changelog ==
+
+= 1.1.0 =
+* Fetch models from all HuggingFace inference providers instead of warm-only models.
+* Filter text generation models to chat-compatible (conversational) models only.
+* Show pricing labels in model dropdowns: "Free tier", "from $X.XX/M tokens", or "Paid".
+* Models under $0.10/M tokens and hf-inference models are labelled "Free tier".
+* Update fallback model lists with broadly supported models for better reliability.
 
 = 1.0.0 =
 * Initial release.

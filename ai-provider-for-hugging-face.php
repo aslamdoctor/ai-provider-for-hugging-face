@@ -5,7 +5,7 @@
  * Description: AI Provider for Hugging Face for the WordPress AI Client.
  * Requires at least: 7.0
  * Requires PHP: 7.4
- * Version: 1.0.0
+ * Version: 1.1.0
  * Author: Aslam Doctor
  * Author URI: https://aslamdoctor.com
  * License: GPL-2.0-or-later
@@ -28,7 +28,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 	return;
 }
 
-define( 'HUGGING_FACE_PROVIDER_VERSION', '1.0.0' );
+define( 'HUGGING_FACE_PROVIDER_VERSION', '1.1.0' );
 define( 'HUGGING_FACE_PROVIDER_FILE', __FILE__ );
 
 require_once __DIR__ . '/src/autoload.php';

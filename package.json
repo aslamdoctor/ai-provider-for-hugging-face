@@ -1,6 +1,6 @@
 {
   "name": "ai-provider-for-hugging-face",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "AI Provider for Hugging Face for the WordPress AI Client.",
   "private": true,
   "scripts": {
